@@ -1,0 +1,346 @@
+🔥 MVI State Management Guide (MVI.md)
+
+यह डॉक्यूमेंट MVI (Model–View–Intent) pattern में State Management को deep level पर explain करता है — especially Jetpack Compose + Clean Architecture setup के लिए।
+
+---
+
+🧠 MVI क्या है?
+
+MVI =
+
+- Model → State
+- View → UI (Compose Screen)
+- Intent → User actions
+
+«💡 Core Idea:
+UI कभी directly state change नहीं करती।
+User → Intent → ViewModel → Reduce → New State → UI»
+
+---
+
+🏗 MVI Flow
+
+User Action
+   ↓
+Intent
+   ↓
+ViewModel
+   ↓
+Reduce (Old State + Intent)
+   ↓
+New State
+   ↓
+UI Recompose
+
+---
+
+🎯 MVI क्यों Use करें?
+
+MVVM| MVI
+Multiple states| Single immutable state
+Mutable updates| Reducer pattern
+Hard to debug| Predictable flow
+Side effects mix| Controlled side effects
+
+---
+
+🧩 Core Concepts
+
+MVI में 3 main components होते हैं:
+
+PostIntent.kt
+PostState.kt
+PostViewModel.kt
+
+---
+
+📦 Step 1: Define Intent
+
+Intent = User action
+
+sealed interface PostIntent {
+
+    data object LoadPosts : PostIntent
+
+    data class CreatePost(
+        val title: String,
+        val body: String
+    ) : PostIntent
+
+    data object Refresh : PostIntent
+}
+
+👉 Intent सिर्फ user actions represent करता है
+👉 Business logic नहीं
+
+---
+
+📦 Step 2: Define State
+
+Single immutable state
+
+data class PostState(
+    val posts: List<Post> = emptyList(),
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
+
+---
+
+📦 Step 3: ViewModel (MVI Style)
+
+class PostViewModel(
+    private val getPostsUseCase: GetPostsUseCase,
+    private val createPostUseCase: CreatePostUseCase
+) : ViewModel() {
+
+    private val _state = MutableStateFlow(PostState())
+    val state = _state.asStateFlow()
+
+    fun onIntent(intent: PostIntent) {
+        when (intent) {
+
+            PostIntent.LoadPosts -> loadPosts()
+
+            is PostIntent.CreatePost -> createPost(
+                intent.title,
+                intent.body
+            )
+
+            PostIntent.Refresh -> loadPosts()
+        }
+    }
+
+    private fun loadPosts() {
+        viewModelScope.launch {
+
+            _state.update { it.copy(isLoading = true) }
+
+            try {
+                val posts = getPostsUseCase()
+
+                _state.update {
+                    it.copy(
+                        posts = posts,
+                        isLoading = false,
+                        error = null
+                    )
+                }
+
+            } catch (e: Exception) {
+
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        error = e.message
+                    )
+                }
+            }
+        }
+    }
+
+    private fun createPost(title: String, body: String) {
+        viewModelScope.launch {
+            createPostUseCase(title, body)
+            loadPosts()
+        }
+    }
+}
+
+---
+
+🧠 Reducer Pattern (Advanced MVI)
+
+Production-ready MVI में reducer use होता है।
+
+---
+
+Step 1: Define Action
+
+sealed interface PostAction {
+    data object Loading : PostAction
+    data class Success(val posts: List<Post>) : PostAction
+    data class Error(val message: String?) : PostAction
+}
+
+---
+
+Step 2: Reducer Function
+
+private fun reduce(
+    oldState: PostState,
+    action: PostAction
+): PostState {
+
+    return when (action) {
+
+        PostAction.Loading -> {
+            oldState.copy(isLoading = true)
+        }
+
+        is PostAction.Success -> {
+            oldState.copy(
+                posts = action.posts,
+                isLoading = false,
+                error = null
+            )
+        }
+
+        is PostAction.Error -> {
+            oldState.copy(
+                isLoading = false,
+                error = action.message
+            )
+        }
+    }
+}
+
+---
+
+Step 3: Dispatch Action
+
+private fun dispatch(action: PostAction) {
+    _state.update { old ->
+        reduce(old, action)
+    }
+}
+
+---
+
+🔄 Full MVI Flow Example
+
+User clicks refresh
+   ↓
+PostIntent.Refresh
+   ↓
+ViewModel.onIntent()
+   ↓
+dispatch(PostAction.Loading)
+   ↓
+API call
+   ↓
+dispatch(PostAction.Success)
+   ↓
+New State
+   ↓
+UI Recompose
+
+---
+
+🎯 Compose Integration
+
+@Composable
+fun PostScreen(viewModel: PostViewModel = koinViewModel()) {
+
+    val state by viewModel.state.collectAsState()
+
+    when {
+        state.isLoading -> LoadingUI()
+        state.error != null -> ErrorUI(state.error!!)
+        else -> PostList(state.posts)
+    }
+}
+
+---
+
+🚀 Side Effects Handling (Important)
+
+MVI में side effects अलग handle करने चाहिए।
+
+Example:
+
+- Navigation
+- Toast
+- Snackbar
+
+private val _effect = MutableSharedFlow<PostEffect>()
+val effect = _effect.asSharedFlow()
+
+---
+
+sealed interface PostEffect {
+    data class ShowToast(val message: String) : PostEffect
+    data object NavigateBack : PostEffect
+}
+
+---
+
+🛡 Enterprise MVI Structure
+
+post/
+ ├── PostIntent.kt
+ ├── PostState.kt
+ ├── PostAction.kt
+ ├── PostEffect.kt
+ ├── PostReducer.kt
+ └── PostViewModel.kt
+
+---
+
+🧪 Testing MVI
+
+@Test
+fun `should emit loading then success`() = runTest {
+
+    viewModel.onIntent(PostIntent.LoadPosts)
+
+    val states = viewModel.state.take(2).toList()
+
+    assertTrue(states[0].isLoading)
+    assertTrue(states[1].posts.isNotEmpty())
+}
+
+---
+
+🏆 Why MVI is Powerful?
+
+✅ Single source of truth
+✅ Predictable state transitions
+✅ Debug friendly
+✅ Easy to log
+✅ Great for complex screens
+✅ Ideal for fintech / ride apps / trading apps
+
+---
+
+⚠️ Common Mistakes
+
+❌ Multiple StateFlow
+❌ Side effects inside state
+❌ Direct state mutation
+❌ Business logic inside reducer
+❌ Huge ViewModel
+
+---
+
+🧠 Golden Rules
+
+- Intent = User action
+- Action = Internal event
+- State = UI model
+- Effect = One-time event
+- Reducer = Pure function
+
+---
+
+📊 MVVM vs MVI Comparison
+
+Feature| MVVM| MVI
+State| Multiple| Single
+Debugging| Medium| Easy
+Predictability| Medium| High
+Complexity| Simple| Advanced
+Enterprise Ready| Yes| Highly
+
+---
+
+🏁 Final Summary
+
+MVI State Management:
+
+- Single immutable state
+- Intent driven UI
+- Reducer based state updates
+- Side effects separated
+- Highly scalable
+- Best for complex apps
