@@ -912,4 +912,112 @@ sudo ufw status
 
 ✅ यह VPS firewall का **safe basic setup** है।
 
+# Allow Specific IP (UFW Firewall)
+
+कई बार हमें किसी port को **पूरी दुनिया (Anywhere)** के लिए open नहीं करना होता।
+सिर्फ **एक specific IP** को access देना होता है।
+
+यह security के लिए best practice है।
+
+---
+
+# Example 1 — SSH सिर्फ अपनी IP के लिए allow
+
+```
+sudo ufw allow from 49.36.120.10 to any port 22
+```
+
+Meaning:
+
+```
+सिर्फ IP 49.36.120.10 ही SSH से server login कर सकती है
+```
+
+बाकी सभी IP block रहेंगी।
+
+---
+
+# Example 2 — Database Port Secure करना
+
+अगर database port **3301** है और सिर्फ आपकी IP को access देना है:
+
+```
+sudo ufw allow from 49.36.120.10 to any port 3301
+```
+
+---
+
+# Example 3 — HTTP Access Specific IP
+
+```
+sudo ufw allow from 49.36.120.10 to any port 80
+```
+
+---
+
+# Example 4 — Full Access Specific IP
+
+अगर किसी IP को server का full access देना हो:
+
+```
+sudo ufw allow from 49.36.120.10
+```
+
+---
+
+# Rule Check
+
+```
+sudo ufw status
+```
+
+Example output:
+
+```
+22 ALLOW 49.36.120.10
+3301 ALLOW 49.36.120.10
+```
+
+---
+
+# Rule Delete करना
+
+अगर rule हटाना हो:
+
+```
+sudo ufw delete allow from 49.36.120.10 to any port 3301
+```
+
+---
+
+# Best Practice
+
+Database ports को **public open मत करो**।
+
+गलत:
+
+```
+3301 ALLOW Anywhere
+```
+
+सही:
+
+```
+3301 ALLOW Your IP
+```
+
+---
+
+# Summary
+
+| Use Case        | Command                                               |
+| --------------- | ----------------------------------------------------- |
+| SSH specific IP | `sudo ufw allow from YOUR_IP to any port 22`          |
+| DB specific IP  | `sudo ufw allow from YOUR_IP to any port 3301`        |
+| Delete rule     | `sudo ufw delete allow from YOUR_IP to any port 3301` |
+
+---
+
+⚡ यह method server security को बहुत strong बना देता है।
+
 
