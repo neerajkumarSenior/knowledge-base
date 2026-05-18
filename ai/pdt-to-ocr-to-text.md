@@ -5,7 +5,7 @@ Task:
 Load scanned PDF book.
 
 Book:
-"Kya Balu Ki Bheet Par Khada Hai Hindu Dharm"
+"book title name of book"
 
 Requirements:
 
@@ -42,7 +42,7 @@ import pytesseract
 pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 
 # Define paths (pdf_path is already set from previous cell)
-# pdf_path = "/content/Kya Balu Ki Bheet Par Khada Hai Hindu Dharm.pdf"
+# pdf_path = "/content/your.pdf"
 output_image_dir = "/content/images"
 ocr_output_json_path = "/content/ocr_raw.json"
 
