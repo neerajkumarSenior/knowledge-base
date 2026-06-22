@@ -165,4 +165,4 @@ STATUS;
 
 ```sql
 SHOW VARIABLES;
-```
+``` `
